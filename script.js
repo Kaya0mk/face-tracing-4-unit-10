@@ -1,13 +1,13 @@
+// Ensure face-api.js is properly loaded
 const video = document.getElementById('video');
 const canvas = document.getElementById('overlay');
 const context = canvas.getContext('2d');
 
+// Placeholder status for faces
 let status = "real";
 let statusChangeTimer = 0;
 
-// Define the path to models folder
-const MODEL_URL = '../models';  // Updated path for models folder
-
+// Function to start webcam
 async function startVideo() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
@@ -17,7 +17,9 @@ async function startVideo() {
   }
 }
 
+// Function to load models from the models directory
 async function loadModels() {
+  const MODEL_URL = '../models'; // Ensure this path is correct
   await Promise.all([
     faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
     faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
@@ -26,6 +28,7 @@ async function loadModels() {
   ]);
 }
 
+// Randomly decide face status ("real" or "not real")
 function getStatus() {
   if (statusChangeTimer <= 0) {
     status = Math.random() < 0.8 ? "real" : "not real";
@@ -36,13 +39,16 @@ function getStatus() {
   return status;
 }
 
+// Event listener when video starts playing
 video.addEventListener('play', () => {
+  // Set canvas size to match video
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
 
   const displaySize = { width: video.videoWidth, height: video.videoHeight };
   faceapi.matchDimensions(canvas, displaySize);
 
+  // Every 100ms, process the video frame
   setInterval(async () => {
     const detections = await faceapi.detectAllFaces(
       video,
@@ -86,5 +92,5 @@ video.addEventListener('play', () => {
   }, 100);
 });
 
-// Initialize
+// Initialize the models and start the video
 loadModels().then(startVideo);
