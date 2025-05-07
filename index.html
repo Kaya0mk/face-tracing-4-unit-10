@@ -5,8 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Face Tracker</title>
 
-  <!-- ✅ Correct order: Load face-api.js first, then your script -->
+  <!-- Load face-api.js from the CDN first -->
   <script defer src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
+
+  <!-- Then load your script -->
   <script defer src="script.js"></script>
 
   <style>
@@ -17,7 +19,7 @@
     }
   </style>
 
-  <!-- Optional: Fix favicon warning -->
+  <!-- Optional: Add favicon to avoid 404 error -->
   <link rel="icon" href="data:,">
 </head>
 <body>
