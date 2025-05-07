@@ -2,25 +2,26 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Multi-Face Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Face Tracker</title>
+
+  <!-- ✅ Correct order: Load face-api.js first, then your script -->
+  <script defer src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
+  <script defer src="script.js"></script>
+
   <style>
-    canvas {
+    canvas, video {
       position: absolute;
       top: 0;
       left: 0;
     }
-    video {
-      display: none;
-    }
   </style>
+
+  <!-- Optional: Fix favicon warning -->
+  <link rel="icon" href="data:,">
 </head>
 <body>
-  <video id="video" width="720" height="560" autoplay muted></video>
+  <video id="video" autoplay muted></video>
   <canvas id="overlay"></canvas>
-
-  <!-- Load face-api.js -->
-  <script defer src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
-  <!-- Your script -->
-  <script defer src="script.js"></script>
 </body>
 </html>
