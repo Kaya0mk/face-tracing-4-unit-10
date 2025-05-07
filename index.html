@@ -5,19 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Face Tracker</title>
 
-  <!-- Load face-api.js from the CDN first -->
+  <!-- Correct order: Load face-api.js from CDN first -->
   <script defer src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
 
-  <!-- Then load your script -->
+  <!-- Then load your custom script -->
   <script defer src="script.js"></script>
 
   <style>
+    /* Style to make sure the video and canvas fit correctly */
     canvas, video {
       position: absolute;
       top: 0;
       left: 0;
-      width: 100%; /* Ensure they fill the screen */
-      height: 100%;
     }
   </style>
 
@@ -25,7 +24,10 @@
   <link rel="icon" href="data:,">
 </head>
 <body>
+  <!-- Video element to show webcam feed -->
   <video id="video" autoplay muted></video>
+
+  <!-- Canvas element to overlay detection results -->
   <canvas id="overlay"></canvas>
 </body>
 </html>
