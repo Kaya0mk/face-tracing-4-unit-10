@@ -1,91 +1,88 @@
 const video = document.getElementById('video');
 const canvas = document.getElementById('overlay');
-const ctx = canvas.getContext('2d');
+const context = canvas.getContext('2d');
 
-let statusMap = new Map(); // Track "real"/"not real" status per face
+let status = "real";
+let statusChangeTimer = 0;
 
-async function setup() {
-  // Load models
-  await faceapi.nets.tinyFaceDetector.loadFromUri('models/');
-  await faceapi.nets.faceLandmark68Net.loadFromUri('models/');
-
-  // Start video
-  navigator.mediaDevices.getUserMedia({ video: {} }).then(stream => {
+async function startVideo() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
     video.srcObject = stream;
-  });
+  } catch (err) {
+    console.error("Error accessing webcam:", err);
+  }
+}
+
+async function loadModels() {
+  const MODEL_URL = './models';
+  await Promise.all([
+    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+    faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
+    faceapi.nets.ageGenderNet.loadFromUri(MODEL_URL)
+  ]);
+}
+
+function getStatus() {
+  if (statusChangeTimer <= 0) {
+    status = Math.random() < 0.8 ? "real" : "not real";
+    statusChangeTimer = Math.floor(Math.random() * 100) + 200; // 200-300 frames
+  } else {
+    statusChangeTimer--;
+  }
+  return status;
 }
 
 video.addEventListener('play', () => {
-  canvas.width = video.width;
-  canvas.height = video.height;
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  const displaySize = { width: video.videoWidth, height: video.videoHeight };
+  faceapi.matchDimensions(canvas, displaySize);
 
   setInterval(async () => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const detections = await faceapi.detectAllFaces(
+      video,
+      new faceapi.TinyFaceDetectorOptions()
+    )
+    .withFaceLandmarks()
+    .withFaceExpressions()
+    .withAgeAndGender();
 
-    const detections = await faceapi
-      .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
-      .withFaceLandmarks();
+    const resizedDetections = faceapi.resizeResults(detections, displaySize);
 
-    detections.forEach((detection, i) => {
-      const { landmarks } = detection;
-      const points = landmarks.positions;
+    context.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Draw points
-      ctx.strokeStyle = 'white';
-      ctx.lineWidth = 0.5;
-      points.forEach(pt => {
-        ctx.beginPath();
-        ctx.arc(pt.x, pt.y, 2, 0, 2 * Math.PI);
-        ctx.stroke();
-      });
+    resizedDetections.forEach(detection => {
+      const { age, gender, genderProbability, expressions, detection: box } = detection;
+      const { x, y, width, height } = box.box;
 
-      // Facial metrics
-      const leftEye = landmarks.getLeftEye();
-      const rightEye = landmarks.getRightEye();
-      const mouth = landmarks.getMouth();
+      // Draw bounding box
+      context.strokeStyle = 'white';
+      context.lineWidth = 2;
+      context.strokeRect(x, y, width, height);
 
-      const eyeDist = dist(leftEye[0], rightEye[3]);
-      const mouthWidth = dist(mouth[0], mouth[6]);
-      const mouthOpen = dist(mouth[14], mouth[18]);
+      // Display status above the face
+      const currentStatus = getStatus();
+      context.fillStyle = 'white';
+      context.font = '20px Arial';
+      context.fillText(currentStatus, x + width / 2 - 20, y - 10);
 
-      // Detect expression (simple smile logic)
-      let expression = ':|';
-      if (mouthWidth > 60 && mouthOpen > 20) expression = ':)';
-      else if (mouthWidth < 50 && mouthOpen < 10) expression = ':(';
+      // Display age and gender below the face
+      const genderText = `${gender} (${(genderProbability * 100).toFixed(1)}%)`;
+      const ageText = `Age: ${Math.round(age)}`;
+      context.fillText(genderText, x, y + height + 20);
+      context.fillText(ageText, x, y + height + 40);
 
-      // Update "real" / "not real" status
-      const key = i;
-      if (!statusMap.has(key) || Math.random() < 0.02) {
-        // 80% chance to stay "real", 20% to flip
-        const newStatus = Math.random() < 0.8 ? "real" : "not real";
-        statusMap.set(key, newStatus);
-      }
-
-      // Draw "real"/"not real" above face
-      const forehead = landmarks.positions[20]; // Rough top center
-      const statusText = statusMap.get(key);
-      ctx.fillStyle = 'white';
-      ctx.font = '16px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(statusText, forehead.x, forehead.y - 30);
-
-      // Line connecting text to face
-      ctx.beginPath();
-      ctx.moveTo(forehead.x, forehead.y - 25);
-      ctx.lineTo(forehead.x, forehead.y);
-      ctx.stroke();
-
-      // Debug info
-      ctx.font = '12px sans-serif';
-      ctx.fillText(`EyeDist: ${eyeDist.toFixed(1)}`, forehead.x - 60, forehead.y + 30);
-      ctx.fillText(`MouthWidth: ${mouthWidth.toFixed(1)}`, forehead.x - 60, forehead.y + 45);
-      ctx.fillText(`Expr: ${expression}`, forehead.x - 60, forehead.y + 60);
+      // Display dominant expression
+      const sortedExpressions = Object.entries(expressions).sort((a, b) => b[1] - a[1]);
+      const [dominantExpression, confidence] = sortedExpressions[0];
+      const expressionText = `Expression: ${dominantExpression} (${(confidence * 100).toFixed(1)}%)`;
+      context.fillText(expressionText, x, y + height + 60);
     });
-  }, 100); // every 100ms
+  }, 100);
 });
 
-function dist(a, b) {
-  return Math.hypot(a.x - b.x, a.y - b.y);
-}
-
-setup();
+// Initialize
+loadModels().then(startVideo);
